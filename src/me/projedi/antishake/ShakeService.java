@@ -16,10 +16,16 @@ public class ShakeService extends Service
    private SensorManager m_sensorManager;
    private Sensor m_accelerometer;
 
+   // Want to send rotation angle plus 1x2 translation vector
+
+   // Screen always looks at the user(sometimes the other way around)
+   // (i.e. rotation around g axis is ignored)
+   // Therefore, by knowing where gravitation goes, one knows orientation.
+
    @Override
    public void onSensorChanged(SensorEvent event) {
       if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) return;
-      //TODO: Send notification
+      //TODO: Get correct transformation
       float[] matrix = { event.values[0], event.values[1], event.values[2] };
       Intent i = new Intent("android.intent.action.MAIN").putExtra("transMatrix", matrix);
       this.sendBroadcast(i);
