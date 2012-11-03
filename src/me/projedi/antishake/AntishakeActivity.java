@@ -20,10 +20,10 @@ public class AntishakeActivity extends Activity
                                implements SeekBar.OnSeekBarChangeListener {
    private boolean m_bound = false;
    private RectangleView m_rectangleView;
-   private TextView m_xTextView;
-   private TextView m_yTextView;
-   private SeekBar m_xSeekBar;
-   private SeekBar m_ySeekBar;
+   private TextView m_trTextView;
+   private TextView m_rotTextView;
+   private SeekBar m_trSeekBar;
+   private SeekBar m_rotSeekBar;
    private static final String TAG = "Antishake";
    private BroadcastReceiver m_receiver;
    private PowerManager.WakeLock wakeLock;
@@ -34,12 +34,12 @@ public class AntishakeActivity extends Activity
       super.onCreate(savedInstanceState);
       setContentView(R.layout.main);
       m_rectangleView = (RectangleView) findViewById(R.id.rectangleView);
-      m_xTextView = (TextView) findViewById(R.id.xTextView);
-      m_yTextView = (TextView) findViewById(R.id.yTextView);
-      m_xSeekBar = (SeekBar) findViewById(R.id.xSeekBar);
-      m_ySeekBar = (SeekBar) findViewById(R.id.ySeekBar);
-      m_xSeekBar.setOnSeekBarChangeListener(this);
-      m_ySeekBar.setOnSeekBarChangeListener(this);
+      m_trTextView = (TextView) findViewById(R.id.trTextView);
+      m_rotTextView = (TextView) findViewById(R.id.rotTextView);
+      m_trSeekBar = (SeekBar) findViewById(R.id.trSeekBar);
+      m_rotSeekBar = (SeekBar) findViewById(R.id.rotSeekBar);
+      m_trSeekBar.setOnSeekBarChangeListener(this);
+      m_rotSeekBar.setOnSeekBarChangeListener(this);
       PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
       wakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My wakelock tag");
    }
@@ -59,7 +59,7 @@ public class AntishakeActivity extends Activity
             //String str = String.format( "X: %f; Y: %f"
             //                          , transform[0], transform[1]);
             //Log.d(TAG, str);
-            m_rectangleView.applyShift(transform[0],transform[1],transform[2]);
+            m_rectangleView.setTransform(transform);
          }
       };
       registerReceiver(m_receiver, intentFilter);
@@ -87,12 +87,12 @@ public class AntishakeActivity extends Activity
    @Override
    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
       float change = (float)progress / 10.0f;
-      if(seekBar == m_xSeekBar) {
-         m_xTextView.setText("X: " + change);
-         m_rectangleView.applyXCoefficient(change);
-      } else if(seekBar == m_ySeekBar) {
-         m_yTextView.setText("Y: " + change);
-         m_rectangleView.applyYCoefficient(change);
+      if(seekBar == m_trSeekBar) {
+         m_trTextView.setText("Translate sensitivity: " + change);
+         m_rectangleView.setTranslateCoefficient(change);
+      } else if(seekBar == m_rotSeekBar) {
+         m_rotTextView.setText("Rotate sensitivity: " + change);
+         m_rectangleView.setRotateCoefficient(change);
       }
    }
 

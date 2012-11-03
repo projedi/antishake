@@ -10,14 +10,14 @@
       android:layout_height="wrap_content"
       >
       <TextView
-         android:id="@+id/xTextView"
+         android:id="@+id/trTextView"
          android:layout_width="wrap_content"
          android:layout_height="wrap_content"
-         android:text="X: 1"
+         android:text="Translate sensitivity: 2"
          />
       <SeekBar
-         android:id="@+id/xSeekBar"
-         android:progress="10"
+         android:id="@+id/trSeekBar"
+         android:progress="20"
          android:layout_width="fill_parent"
          android:layout_height="wrap_content"
          />
@@ -28,14 +28,14 @@
       android:layout_height="wrap_content"
       >
       <TextView
-         android:id="@+id/yTextView"
+         android:id="@+id/rotTextView"
          android:layout_width="wrap_content"
          android:layout_height="wrap_content"
-         android:text="Y: 1"
+         android:text="Rotate sensitivity: 2"
          />
       <SeekBar
-         android:id="@+id/ySeekBar"
-         android:progress="10"
+         android:id="@+id/rotSeekBar"
+         android:progress="20"
          android:layout_width="fill_parent"
          android:layout_height="wrap_content"
          />
