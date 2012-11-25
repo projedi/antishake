@@ -40,7 +40,7 @@ public class ShakeService extends Service {
    }
 
    @Override
-   public void onDestroy() { mSensorManager.unregisterListener(mSensorEventListener); }
+   public void onDestroy() { mSensorManager.unregisterListener(mSensorListener); }
 
    private SensorManager mSensorManager;
    private Sensor mAccelerometer;
@@ -64,7 +64,7 @@ public class ShakeService extends Service {
       public void onAccuracyChanged(Sensor sensor, int accuracy) { }
 
       @Override
-      void onSensorChanged(SensorEvent event) {
+      public void onSensorChanged(SensorEvent event) {
          //TODO: Try to get some rotation data from just acceleration
          if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
             mTransform[0] = -event.values[0];
@@ -73,7 +73,7 @@ public class ShakeService extends Service {
             mTransform[2] = event.values[2];
          }
       }
-   }
+   };
 
    private final IBinder mBinder = new Binder();
 }

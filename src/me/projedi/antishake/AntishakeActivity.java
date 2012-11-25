@@ -42,6 +42,8 @@ public class AntishakeActivity extends Activity
       m_rotSeekBar.setOnSeekBarChangeListener(this);
       PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
       wakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My wakelock tag");
+      String text = getString(R.string.long_text);
+      m_rectangleView.setText(text);
    }
 
    @Override
@@ -50,7 +52,7 @@ public class AntishakeActivity extends Activity
       Intent intent = new Intent(this, ShakeService.class);
       bindService(intent, m_connection, Context.BIND_AUTO_CREATE);
       m_bound = true;
-      IntentFilter intentFilter = new IntentFilter("android.intent.action.MAIN");
+      IntentFilter intentFilter = new IntentFilter("me.projedi.antishake.ACTION_SHAKE");
       m_receiver = new BroadcastReceiver() {
          @Override
          public void onReceive(Context context, Intent intent) {

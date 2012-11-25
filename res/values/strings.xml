@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AntishakeActivity</string>
+    <string name="long_text">
+public void concat (Matrix matrix)
+\n
+Added in API level 1
+\n
+Preconcat the current matrix with the specified matrix.
+\n
+Parameters
+\n
+matrix   The matrix to preconcatenate with the current matrix
+    </string>
 </resources>
