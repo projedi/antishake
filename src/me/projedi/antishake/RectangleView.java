@@ -103,8 +103,8 @@ public class RectangleView extends View {
       float w = getWidth();
       float h = getHeight();
       canvas.rotate(mTransform[2], w/2, h/2);
-      //canvas.translate(mTransform[0], mTransform[1]);
-      Log.d(TAG, "Got translation: " + mTransform[0] + ", " + mTransform[1]);
+      canvas.translate(mTransform[0], mTransform[1]);
+      //Log.d(TAG, "Got translation: " + mTransform[0] + ", " + mTransform[1]);
       // Took from http://stackoverflow.com/a/6757005/547814
       //String text = getString(R.string.long_text);
       int x = 30, y = 30;

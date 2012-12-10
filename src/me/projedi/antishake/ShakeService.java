@@ -67,12 +67,25 @@ public class ShakeService extends Service {
    }
 
    private void updatePosition(double ax, double ay, double dt) {
+      double sigma = 0.5;
+      double a0 = 1;
+      ax *= Math.exp(-(Math.abs(ax)-a0)*(Math.abs(ax)-a0)/2/sigma/sigma);
+      ay *= Math.exp(-(Math.abs(ay)-a0)*(Math.abs(ay)-a0)/2/sigma/sigma);
       double vx = ax*dt;
       double vy = ay*dt;
-      double[][] trans = { {1, 0, dt, 0}
-                         , {0, 1, 0,  dt}
-                         , {0, 0, 1,  0}
-                         , {0, 0, 0,  1} };
+      double x = mKalmanPosition.getState_post().get(0,0);
+      double y = mKalmanPosition.getState_post().get(1,0);
+      //Log.d(TAG, "ax = " + ax + "; ay = " + ay);
+      double x0 = 0.001;
+      double y0 = x0;
+      double cx = Math.abs(x) > x0 ? 1 : Math.abs(x) / x0;
+      double cy = Math.abs(y) > y0 ? 1 : Math.abs(y) / y0;
+      //double cx = 1;
+      //double cy = 1;
+      double[][] trans = { {1,  0,  dt, 0}
+                         , {0,  1,  0,  dt}
+                         , {cx, 0,  1,  0}
+                         , {0,  cy, 0,  1} };
       mKalmanPosition.setTransition_matrix(new Matrix(trans));
       mKalmanPosition.Predict();
       Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
@@ -81,8 +94,13 @@ public class ShakeService extends Service {
    }
 
    private void updateRotation(double vphi, double dt) {
+      double sigma = 0.5;
+      double vphi0 = 1.0;
+      vphi *= Math.exp(-(Math.abs(vphi)-vphi0)*(Math.abs(vphi)-vphi0)/2/sigma/sigma);
+      //Log.d(TAG, "vphi = " + vphi);
       double phi = mKalmanRotation.getState_post().get(0,0);
-      double a = Math.abs(phi);
+      double phi0 = 0.1;
+      double a = Math.abs(phi) > phi0 ? 1 : Math.abs(phi) / phi0;
       double[][] trans = { {1, dt}, {a, 1} };
       //double[][] trans = { {1, dt}, {0, 1} };
       mKalmanRotation.setTransition_matrix(new Matrix(trans));
@@ -96,17 +114,22 @@ public class ShakeService extends Service {
          // In order to stay in a 0-neighbourhood it measures position as (0,0)
          mKalmanPosition = new JKalman(4, 4);
       } catch(Exception e) { }
-      mKalmanPosition.setMeasurement_matrix(Matrix.identity(4, 4));
+      double[][] measure = { {0, 0, 0, 0}
+                           , {0, 0, 0, 0}
+                           , {0, 0, 1, 0}
+                           , {0, 0, 0, 1} };
+      //mKalmanPosition.setMeasurement_matrix(Matrix.identity(4, 4));
+      mKalmanPosition.setMeasurement_matrix((new Matrix(measure)).transpose());
       double p = 1e-3;
       double dp = 1e-3;
-      double v = 1e-3;
+      double v = 1e-1;
       double[][] processNoise = { {p, 0, dp, 0}
                                 , {0, p, 0,  dp}
                                 , {0, 0, v,  0}
                                 , {0, 0, 0,  v} };
       mKalmanPosition.setProcess_noise_cov(new Matrix(processNoise));
       double mp = 1e-1;
-      double mv = 1e-3;
+      double mv = 1e-4;
       double[][] measureNoise = { {mp, 0, 0, 0}
                                 , {0, mp, 0, 0}
                                 , {0, 0, mv, 0}
