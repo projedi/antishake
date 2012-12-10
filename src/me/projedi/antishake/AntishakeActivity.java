@@ -20,10 +20,10 @@ public class AntishakeActivity extends Activity
                                implements SeekBar.OnSeekBarChangeListener {
    private boolean m_bound = false;
    private RectangleView m_rectangleView;
-   private TextView m_trTextView;
-   private TextView m_rotTextView;
-   private SeekBar m_trSeekBar;
-   private SeekBar m_rotSeekBar;
+   //private TextView m_trTextView;
+   //private TextView m_rotTextView;
+   //private SeekBar m_trSeekBar;
+   //private SeekBar m_rotSeekBar;
    private static final String TAG = "Antishake";
    private BroadcastReceiver m_receiver;
    private PowerManager.WakeLock wakeLock;
@@ -34,12 +34,12 @@ public class AntishakeActivity extends Activity
       super.onCreate(savedInstanceState);
       setContentView(R.layout.main);
       m_rectangleView = (RectangleView) findViewById(R.id.rectangleView);
-      m_trTextView = (TextView) findViewById(R.id.trTextView);
-      m_rotTextView = (TextView) findViewById(R.id.rotTextView);
-      m_trSeekBar = (SeekBar) findViewById(R.id.trSeekBar);
-      m_rotSeekBar = (SeekBar) findViewById(R.id.rotSeekBar);
-      m_trSeekBar.setOnSeekBarChangeListener(this);
-      m_rotSeekBar.setOnSeekBarChangeListener(this);
+      //m_trTextView = (TextView) findViewById(R.id.trTextView);
+      //m_rotTextView = (TextView) findViewById(R.id.rotTextView);
+      //m_trSeekBar = (SeekBar) findViewById(R.id.trSeekBar);
+      //m_rotSeekBar = (SeekBar) findViewById(R.id.rotSeekBar);
+      //m_trSeekBar.setOnSeekBarChangeListener(this);
+      //m_rotSeekBar.setOnSeekBarChangeListener(this);
       PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
       wakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My wakelock tag");
       String text = getString(R.string.long_text);
@@ -88,6 +88,7 @@ public class AntishakeActivity extends Activity
 
    @Override
    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+      /*
       float change = (float)progress / 10.0f;
       if(seekBar == m_trSeekBar) {
          m_trTextView.setText("Translate sensitivity: " + change);
@@ -96,6 +97,7 @@ public class AntishakeActivity extends Activity
          m_rotTextView.setText("Rotate sensitivity: " + change);
          m_rectangleView.setRotateCoefficient(change);
       }
+      */
    }
 
    @Override

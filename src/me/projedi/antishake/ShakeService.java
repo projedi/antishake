@@ -11,6 +11,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.DisplayMetrics;
+import android.view.WindowManager;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -50,6 +52,10 @@ public class ShakeService extends Service {
       mBroadcastTimer = new Timer();
       initKalmanPosition();
       initKalmanRotation();
+      DisplayMetrics metrics = new DisplayMetrics();
+      ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getMetrics(metrics);
+      mMetersToPixelsX = metrics.xdpi * 39.3701;
+      mMetersToPixelsY = metrics.ydpi * 39.3701;
       mBroadcastTimer.schedule(mBroadcastTask, 0, mTransferRate);
    }
 
@@ -61,73 +67,70 @@ public class ShakeService extends Service {
    }
 
    private void updatePosition(double ax, double ay, double dt) {
-      double dt2 = dt*dt/2;
-      double[][] trans = { {1, 0, dt, 0,  dt2, 0}
-                         , {0, 1, 0,  dt, 0,   dt2}
-                         , {0, 0, 1,  0,  dt,  0}
-                         , {0, 0, 0,  1,  0,   dt}
-                         , {0, 0, 0,  0,  1,   0}
-                         , {0, 0, 0,  0,  0,   1}
-                         };
+      double vx = ax*dt;
+      double vy = ay*dt;
+      double[][] trans = { {1, 0, dt, 0}
+                         , {0, 1, 0,  dt}
+                         , {0, 0, 1,  0}
+                         , {0, 0, 0,  1} };
       mKalmanPosition.setTransition_matrix(new Matrix(trans));
       mKalmanPosition.Predict();
-      Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] { ax, ay }, 2));
-      mTransform[0] = (float)(-newState.getArray()[0][0] * mMetersToPixels);
-      mTransform[1] = (float)(-newState.getArray()[1][0] * mMetersToPixels);
-      //newState.getArray()[0][0] = 0;
-      //newState.getArray()[1][0] = 0;
-      //mKalmanPosition.setState_post(newState);
+      Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
+      mTransform[0] = (float)(-newState.get(0,0) * mMetersToPixelsX);
+      mTransform[1] = (float)(-newState.get(1,0) * mMetersToPixelsY);
    }
 
    private void updateRotation(double vphi, double dt) {
-      double[][] trans = { {1, dt}, {0, 1} };
+      double phi = mKalmanRotation.getState_post().get(0,0);
+      double a = Math.abs(phi);
+      double[][] trans = { {1, dt}, {a, 1} };
+      //double[][] trans = { {1, dt}, {0, 1} };
       mKalmanRotation.setTransition_matrix(new Matrix(trans));
-      mKalmanRotation.Predict();
-      Matrix newState = mKalmanRotation.Correct(new Matrix(new double[] { vphi }, 1));
-      mTransform[2] = (float)(-newState.getArray()[0][0] * mRadiansToDegrees);
-      //newState.getArray()[0][0] = 0;
-      //mKalmanRotation.setState_post(newState);
+      Matrix predictedState = mKalmanRotation.Predict();
+      Matrix newState = mKalmanRotation.Correct(new Matrix(new double[] { 0, vphi }, 2));
+      mTransform[2] = (float)(-newState.get(0,0) * mRadiansToDegrees);
    }
 
    private void initKalmanPosition() {
       try {
-         mKalmanPosition = new JKalman(6, 2);
+         // In order to stay in a 0-neighbourhood it measures position as (0,0)
+         mKalmanPosition = new JKalman(4, 4);
       } catch(Exception e) { }
-      double[][] measure = { {0, 0, 0, 0, 1, 0 }, {0, 0, 0, 0, 0, 1} };
-      mKalmanPosition.setMeasurement_matrix(new Matrix(measure));
+      mKalmanPosition.setMeasurement_matrix(Matrix.identity(4, 4));
       double p = 1e-3;
       double dp = 1e-3;
-      double d2p = 1e-3;
       double v = 1e-3;
-      double dv = 1e-3;
-      double a = 1e-3;
-      double[][] processNoise = { {p, 0, dp, 0,  d2p, 0}
-                                , {0, p, 0,  dp, 0,   d2p}
-                                , {0, 0, v,  0,  dv,  0}
-                                , {0, 0, 0,  v,  0,   dv}
-                                , {0, 0, 0,  0,  a,   0}
-                                , {0, 0, 0,  0,  0,   a} };
+      double[][] processNoise = { {p, 0, dp, 0}
+                                , {0, p, 0,  dp}
+                                , {0, 0, v,  0}
+                                , {0, 0, 0,  v} };
       mKalmanPosition.setProcess_noise_cov(new Matrix(processNoise));
       double mp = 1e-1;
-      double[][] measureNoise = { {mp, 0} , {0, mp}};
+      double mv = 1e-3;
+      double[][] measureNoise = { {mp, 0, 0, 0}
+                                , {0, mp, 0, 0}
+                                , {0, 0, mv, 0}
+                                , {0, 0, 0, mv} };
       mKalmanPosition.setMeasurement_noise_cov(new Matrix(measureNoise));
-      mKalmanPosition.setState_post(new Matrix(new double[] { 0, 0, 0, 0, 0, 0 }, 6));
+      mKalmanPosition.setState_post(new Matrix(new double[] {0, 0, 0, 0}, 4));
    }
 
    private void initKalmanRotation() {
       try {
-         mKalmanRotation = new JKalman(2, 1);
+         // In order to stay in a 0-neighbourhood it measures rotation as 0
+         mKalmanRotation = new JKalman(2, 2);
       } catch(Exception e) { }
-      double[][] measure = { {0, 1} };
-      mKalmanRotation.setMeasurement_matrix(new Matrix(measure));
+      double[][] measure = { {0, 0}, {0, 1} };
+      mKalmanRotation.setMeasurement_matrix((new Matrix(measure)).transpose());
       double p = 1e-3;
       double dp = 1e-3;
-      double v = 1e-3;
+      double v = 1e-1;
       double[][] processNoise = { {p, dp}
                                 , {0, v} };
       mKalmanRotation.setProcess_noise_cov(new Matrix(processNoise));
-      double mp = 1e-1;
-      double[][] measureNoise = { {mp} };
+      double mp = 1e-3;
+      double mv = 1e-5;
+      double[][] measureNoise = { {mp, 0}, {0, mv} };
       mKalmanRotation.setMeasurement_noise_cov(new Matrix(measureNoise));
       mKalmanRotation.setState_post(new Matrix(new double[] { 0, 0 }, 2));
    }
@@ -144,7 +147,8 @@ public class ShakeService extends Service {
    private int mSensorAccuracy = SensorManager.SENSOR_DELAY_FASTEST;
    //private int mSensorAccuracy = SensorManager.SENSOR_DELAY_UI;
    private double mRadiansToDegrees = 180.0 / Math.PI;
-   private double mMetersToPixels = 1.0;
+   private double mMetersToPixelsX;
+   private double mMetersToPixelsY;
 
    private TimerTask mBroadcastTask = new TimerTask() {
       @Override
@@ -174,7 +178,7 @@ public class ShakeService extends Service {
             if(timestampGyroscope != 0)
                dt = (double)(event.timestamp - timestampGyroscope) / 1e9;
             timestampGyroscope = event.timestamp;
-            updateRotation(event.values[2], dt);
+            updateRotation(-event.values[2], dt);
          }
       }
    };

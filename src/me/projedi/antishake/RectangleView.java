@@ -20,7 +20,7 @@ public class RectangleView extends View {
    private Path m_pathStatic;
    private Path m_pathMoving;
    private Path mPathText;
-   float[] m_transform;
+   float[] mTransform;
    float m_translateCoefficient;
    float m_rotateCoefficient;
    Matrix mTransformMatrix;
@@ -36,22 +36,26 @@ public class RectangleView extends View {
 
    public RectangleView(Context context, AttributeSet attrs) {
       super(context,attrs);
+      /*
       m_paintMoving = new Paint();
       m_paintMoving.setStyle(Paint.Style.FILL);
       m_paintMoving.setColor(0xff000000);
       m_paintStatic = new Paint();
       m_paintStatic.setStyle(Paint.Style.FILL);
       m_paintStatic.setColor(0xff00ff00);
+      */
       m_paintText = new Paint();
       m_paintText.setTextSize(20);
       m_paintText.setColor(0xffffffff);
-      m_transform = new float[3];
+      mTransform = new float[3];
+      /*
       m_translateCoefficient = 1;
       m_rotateCoefficient = 1;
       m_pathMoving = new Path();
       m_pathStatic = new Path();
       m_pathMoving.addRect(new RectF(0,0,0,0), Path.Direction.CW);
       m_pathMoving.close();
+      */
       Timer timer = new Timer();
       timer.schedule(m_timerTask,0,10);
    }
@@ -65,7 +69,7 @@ public class RectangleView extends View {
    }
 
    public void setTransform(float[] transform) {
-      m_transform = transform;
+      mTransform = transform;
    }
 
    public void setText(String text) {
@@ -73,18 +77,18 @@ public class RectangleView extends View {
    }
 
    private void recalculateRect() {
-      float w = getWidth();
-      float h = getHeight();
-      m_pathStatic = new Path();
+      //float w = getWidth();
+      //float h = getHeight();
+      //m_pathStatic = new Path();
       //m_pathStatic.addRect(new RectF(w/4,h/4,3*w/4,3*h/4), Path.Direction.CW);
-      m_pathStatic.addRect(new RectF(0,0,w,h), Path.Direction.CW);
-      m_pathStatic.close();
-      Matrix mat = new Matrix();
-      mat.setRotate(m_transform[2]*m_rotateCoefficient,w/2,h/2);
-      mat.postTranslate( m_transform[0]*m_translateCoefficient
-                       , m_transform[1]*m_translateCoefficient);
-      mTransformMatrix = mat;
-      m_pathStatic.transform(mat,m_pathMoving);
+      //m_pathStatic.addRect(new RectF(0,0,w,h), Path.Direction.CW);
+      //m_pathStatic.close();
+      //Matrix mat = new Matrix();
+      //mat.setRotate(m_transform[2]*m_rotateCoefficient,w/2,h/2);
+      //mat.postTranslate( m_transform[0]*m_translateCoefficient
+                       //, m_transform[1]*m_translateCoefficient);
+      //mTransformMatrix = mat;
+      //m_pathStatic.transform(mat,m_pathMoving);
    }
 
    @Override
@@ -95,7 +99,12 @@ public class RectangleView extends View {
       //canvas.drawPath(m_pathMoving, m_paintMoving);
       //canvas.drawTextOnPath("Example text Example text Example text", m_pathMoving, 0.f, m_paintText.getTextSize(), m_paintText);
 
-      canvas.concat(mTransformMatrix);
+      //canvas.concat(mTransformMatrix);
+      float w = getWidth();
+      float h = getHeight();
+      canvas.rotate(mTransform[2], w/2, h/2);
+      //canvas.translate(mTransform[0], mTransform[1]);
+      Log.d(TAG, "Got translation: " + mTransform[0] + ", " + mTransform[1]);
       // Took from http://stackoverflow.com/a/6757005/547814
       //String text = getString(R.string.long_text);
       int x = 30, y = 30;

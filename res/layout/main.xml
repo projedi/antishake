@@ -4,6 +4,7 @@
    android:layout_width="fill_parent"
    android:layout_height="fill_parent"
    >
+   <!--
    <LinearLayout
       android:orientation="horizontal"
       android:layout_width="fill_parent"
@@ -40,6 +41,7 @@
          android:layout_height="wrap_content"
          />
    </LinearLayout>
+   -->
    <me.projedi.antishake.RectangleView
        android:id="@+id/rectangleView"
        android:layout_width="fill_parent"
