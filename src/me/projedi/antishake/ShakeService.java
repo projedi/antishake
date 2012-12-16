@@ -24,7 +24,6 @@ import jkalman.*;
 
 // TODO: Use intents for setting params
 
-// TODO: Use 
 /**
  * Service calculates a transformation to minimize shaking of a view
  *
@@ -44,7 +43,8 @@ public class ShakeService extends Service {
       Log.d(TAG, "service created");
       mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
       // TODO: It uses API Level 9 sensor. Implement a fallback to pure accelerometer.
-      mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+      //mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+      mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
       mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
       mSensorManager.registerListener(mSensorListener, mAccelerometer, mSensorAccuracy);
       mSensorManager.registerListener(mSensorListener, mGyroscope, mSensorAccuracy);
@@ -57,6 +57,8 @@ public class ShakeService extends Service {
       mMetersToPixelsX = metrics.xdpi * 39.3701;
       mMetersToPixelsY = metrics.ydpi * 39.3701;
       mBroadcastTimer.schedule(mBroadcastTask, 0, mTransferRate);
+      prevRes = new double[2];
+      prevMeasure = new double[2];
    }
 
    @Override
@@ -67,30 +69,82 @@ public class ShakeService extends Service {
    }
 
    private void updatePosition(double ax, double ay, double dt) {
-      double sigma = 0.5;
-      double a0 = 1;
-      ax *= Math.exp(-(Math.abs(ax)-a0)*(Math.abs(ax)-a0)/2/sigma/sigma);
-      ay *= Math.exp(-(Math.abs(ay)-a0)*(Math.abs(ay)-a0)/2/sigma/sigma);
       double vx = ax*dt;
       double vy = ay*dt;
-      double x = mKalmanPosition.getState_post().get(0,0);
-      double y = mKalmanPosition.getState_post().get(1,0);
-      //Log.d(TAG, "ax = " + ax + "; ay = " + ay);
-      double x0 = 0.001;
-      double y0 = x0;
-      double cx = Math.abs(x) > x0 ? 1 : Math.abs(x) / x0;
-      double cy = Math.abs(y) > y0 ? 1 : Math.abs(y) / y0;
-      //double cx = 1;
-      //double cy = 1;
+      //double x = mKalmanPosition.getState_post().get(0,0);
+      //double y = mKalmanPosition.getState_post().get(1,0);
+      Log.d(TAG, "Accelerometer ax = " + ax + "; ay = " + ay);
+      Log.d(TAG, "Accelerometer vx = " + vx + "; vy = " + vy);
+      //double x0 = 0.001;
+      //double y0 = x0;
+      //double cx = Math.abs(x) > x0 ? 1 : Math.abs(x) / x0;
+      //double cy = Math.abs(y) > y0 ? 1 : Math.abs(y) / y0;
+      double cx = -1;
+      double cy = -1;
       double[][] trans = { {1,  0,  dt, 0}
                          , {0,  1,  0,  dt}
-                         , {cx, 0,  1,  0}
-                         , {0,  cy, 0,  1} };
+                         , {cx, 0,  0,  0}
+                         , {0,  cy, 0,  0} };
       mKalmanPosition.setTransition_matrix(new Matrix(trans));
       mKalmanPosition.Predict();
       Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
+      vx = newState.get(2,0);
+      vy = newState.get(3,0);
+      double x = newState.get(0,0);
+      double y = newState.get(1,0);
+      Log.d(TAG, "Kalman x = " + x + "; y = " + y);
+      Log.d(TAG, "Kalman vx = " + vx + "; vy = " + vy);
+      //x *= 0.3;
+      //y *= 0.3;
+      // I get almost 0.4 when in rest and about 1-3 when shaking
+      double sigma = 1;
+      double v0 = 2;
+      //ax = ax < 0.3 || ax > 3 ? 0 : ax;
+      //ay = ay < 0.3 || ay > 3 ? 0 : ay;
+      vx *= Math.exp(-(Math.abs(vx)-v0)*(Math.abs(vx)-v0)/2/sigma/sigma);
+      vy *= Math.exp(-(Math.abs(vy)-v0)*(Math.abs(vy)-v0)/2/sigma/sigma);
+      Log.d(TAG, "Yet another x = " + x + "; y = " + y);
+      Log.d(TAG, "Yet another vx = " + vx + "; vy = " + vy);
+      newState.set(2,0,vx);
+      newState.set(3,0,vy);
+      newState.set(0,0,x);
+      newState.set(1,0,y);
+      mKalmanPosition.setState_post(newState);
       mTransform[0] = (float)(-newState.get(0,0) * mMetersToPixelsX);
       mTransform[1] = (float)(-newState.get(1,0) * mMetersToPixelsY);
+   }
+
+   private double [] prevRes;
+   private double [] prevMeasure;
+   private double[] bandpassFilter(double ax, double ay, double dt) {
+      double cutoffLP = 1.0;
+      double cutoffHP = 10.0;
+      double RCLP = 1. / 2 / Math.PI / cutoffLP;
+      double RCHP = 1. / 2 / Math.PI / cutoffHP;
+      double alphaLP = dt / (RCLP + dt);
+      double alphaHP = RCHP / (RCHP + dt);
+      double[] res = new double[2];
+      res[0] = ax * alphaLP + (1-alphaLP) * prevRes[0];
+      double m = res[0];
+      res[0] = prevRes[0] * alphaHP + alphaHP * (res[0] - prevMeasure[0]);
+      prevMeasure[0] = m;
+      prevRes[0] = res[0];
+      res[1] = ay * alphaLP + (1-alphaLP) * prevRes[1];
+      m = res[1];
+      res[1] = prevRes[1] * alphaHP + alphaHP * (res[1] - prevMeasure[1]);
+      prevMeasure[1] = m;
+      prevRes[1] = res[1];
+      return res;
+   }
+
+   private void updatePositionPureFilter(double ax, double ay, double dt) {
+      Log.d(TAG, "Before: " + ax + " " + ay);
+      double[] res = bandpassFilter(ax,ay,dt);
+      Log.d(TAG, "After: " + res[0] + " " + res[1]);
+      double x = res[0] * 2.2;
+      double y = res[1] * 2.2;
+      mTransform[0] = (float)(x * 10);
+      mTransform[1] = (float)(y * 10);
    }
 
    private void updateRotation(double vphi, double dt) {
@@ -192,11 +246,13 @@ public class ShakeService extends Service {
       @Override
       public void onSensorChanged(SensorEvent event) {
          double dt = 0.0;
-         if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+         //if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             if(timestampAcceleration != 0)
                dt = (double)(event.timestamp - timestampAcceleration) / 1e9;
             timestampAcceleration = event.timestamp;
-            updatePosition(event.values[0], event.values[1], dt);
+            //updatePosition(event.values[0], event.values[1], dt);
+            updatePositionPureFilter(event.values[0], event.values[1], dt);
          } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             if(timestampGyroscope != 0)
                dt = (double)(event.timestamp - timestampGyroscope) / 1e9;
@@ -207,5 +263,6 @@ public class ShakeService extends Service {
    };
 
    private final IBinder mBinder = new Binder();
-   private final String TAG = "ShakeService";
+   //private final String TAG = "ShakeService";
+   private final String TAG = "Antishake";
 }
