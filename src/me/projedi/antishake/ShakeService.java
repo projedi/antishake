@@ -60,6 +60,7 @@ public class ShakeService extends Service {
       prevRes = new double[2];
       prevCRes = new double[2];
       prevMeasure = new double[2];
+      prevCMeasure = new double[2];
    }
 
    @Override
@@ -103,6 +104,29 @@ public class ShakeService extends Service {
    }
 
    private double[] prevCRes;
+   private double[] prevCMeasure;
+   // Just high-pass
+   private double[] bandpassCoordinate(double x, double y, double dt) {
+      // Sweet spot for bandpass
+      double cutoffLP = 1000.0;
+      double cutoffHP = 1.3;
+      double RCLP = 1. / 2 / Math.PI / cutoffLP;
+      double RCHP = 1. / 2 / Math.PI / cutoffHP;
+      double alphaLP = dt / (RCLP + dt);
+      double alphaHP = RCHP / (RCHP + dt);
+      double[] res = new double[2];
+      res[0] = alphaHP * prevCRes[0] + alphaHP * (x - prevCMeasure[0]);
+      prevCMeasure[0] = x;
+      res[0] = alphaLP * res[0] + (1 - alphaLP) * prevCRes[0];
+      prevCRes[0] = res[0];
+      res[1] = alphaHP * prevCRes[1] + alphaHP * (y - prevCMeasure[1]);
+      prevCMeasure[1] = y;
+      res[1] = alphaLP * res[1] + (1 - alphaLP) * prevCRes[1];
+      prevCRes[1] = res[1];
+      return res;
+   }
+
+   //private double[] prevCRes;
    private double[] lowpassCoordinate(double x, double y, double dt) {
       double[] res = new double[2];
       double cutoff = 1;
@@ -122,16 +146,16 @@ public class ShakeService extends Service {
       double vy = res[1]*dt;
       double[][] trans = { {1, 0, dt, 0}
                          , {0, 1, 0,  dt}
-                         , {1, 0, 0,  0}
-                         , {0, 1, 0,  0} };
+                         , {2, 0, 0,  0}
+                         , {0, 2, 0,  0} };
       mKalmanPosition.setTransition_matrix(new Matrix(trans));
       Matrix oldState = mKalmanPosition.Predict();
       Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
-      res = lowpassCoordinate(newState.get(0,0),newState.get(1,0),10*dt);
+      res = bandpassCoordinate(newState.get(0,0),newState.get(1,0),10*dt);
       //res[0] = newState.get(0,0);
       //res[1] = newState.get(1,0);
       mTransform[0] = (float)(-res[0] * mMetersToPixelsX);
-      mTransform[1] = (float)(-res[1] * mMetersToPixelsY);
+      mTransform[1] = (float)(res[1] * mMetersToPixelsY);
       //double sX = newState.get(0,0) * mMetersToPixelsX;
       //double sY = newState.get(1,0) * mMetersToPixelsY;
       //double x = (oldState.get(0,0) + vx * dt) * mMetersToPixelsX;
