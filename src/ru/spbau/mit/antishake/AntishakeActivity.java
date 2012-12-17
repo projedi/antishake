@@ -1,4 +1,4 @@
-package me.projedi.antishake;
+package ru.spbau.mit.antishake;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -52,7 +52,7 @@ public class AntishakeActivity extends Activity
       Intent intent = new Intent(this, ShakeService.class);
       bindService(intent, m_connection, Context.BIND_AUTO_CREATE);
       m_bound = true;
-      IntentFilter intentFilter = new IntentFilter("me.projedi.antishake.ACTION_SHAKE");
+      IntentFilter intentFilter = new IntentFilter("ru.spbau.mit.antishake.ACTION_SHAKE");
       m_receiver = new BroadcastReceiver() {
          @Override
          public void onReceive(Context context, Intent intent) {

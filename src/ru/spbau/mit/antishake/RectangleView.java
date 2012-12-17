@@ -1,4 +1,4 @@
-package me.projedi.antishake;
+package ru.spbau.mit.antishake;
 
 import android.view.View;
 import android.graphics.Canvas;
@@ -102,7 +102,7 @@ public class RectangleView extends View {
       //canvas.concat(mTransformMatrix);
       float w = getWidth();
       float h = getHeight();
-      canvas.rotate(mTransform[2], w/2, h/2);
+      //canvas.rotate(mTransform[2], w/2, h/2);
       canvas.translate(mTransform[0], mTransform[1]);
       //Log.d(TAG, "Got translation: " + mTransform[0] + ", " + mTransform[1]);
       // Took from http://stackoverflow.com/a/6757005/547814

@@ -1,4 +1,4 @@
-package me.projedi.antishake;
+package ru.spbau.mit.antishake;
 
 import android.app.Service;
 import android.os.Binder;
@@ -27,7 +27,7 @@ import jkalman.*;
 /**
  * Service calculates a transformation to minimize shaking of a view
  *
- * Uses intent "me.projedi.antishake.ACTION_SHAKE" with field "transform"
+ * Uses intent "ru.spbau.mit.antishake.ACTION_SHAKE" with field "transform"
  * which is float[3] where transform[0] - x translation, transform[1] - y translation,
  * transform[2] - rotatation.
  */
@@ -256,7 +256,7 @@ public class ShakeService extends Service {
    private TimerTask mBroadcastTask = new TimerTask() {
       @Override
       public void run() {
-         Intent shakeIntent = new Intent("me.projedi.antishake.ACTION_SHAKE");
+         Intent shakeIntent = new Intent("ru.spbau.mit.antishake.ACTION_SHAKE");
          shakeIntent.putExtra("transform", mTransform);
          sendBroadcast(shakeIntent);
       }
