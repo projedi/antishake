@@ -58,6 +58,7 @@ public class ShakeService extends Service {
       mMetersToPixelsY = metrics.ydpi * 39.3701;
       mBroadcastTimer.schedule(mBroadcastTask, 0, mTransferRate);
       prevRes = new double[2];
+      prevCRes = new double[2];
       prevMeasure = new double[2];
    }
 
@@ -68,62 +69,25 @@ public class ShakeService extends Service {
       mBroadcastTimer.cancel();
    }
 
-   private void updatePosition(double ax, double ay, double dt) {
-      double vx = ax*dt;
-      double vy = ay*dt;
-      //double x = mKalmanPosition.getState_post().get(0,0);
-      //double y = mKalmanPosition.getState_post().get(1,0);
-      Log.d(TAG, "Accelerometer ax = " + ax + "; ay = " + ay);
-      Log.d(TAG, "Accelerometer vx = " + vx + "; vy = " + vy);
-      //double x0 = 0.001;
-      //double y0 = x0;
-      //double cx = Math.abs(x) > x0 ? 1 : Math.abs(x) / x0;
-      //double cy = Math.abs(y) > y0 ? 1 : Math.abs(y) / y0;
-      double cx = -1;
-      double cy = -1;
-      double[][] trans = { {1,  0,  dt, 0}
-                         , {0,  1,  0,  dt}
-                         , {cx, 0,  0,  0}
-                         , {0,  cy, 0,  0} };
-      mKalmanPosition.setTransition_matrix(new Matrix(trans));
-      mKalmanPosition.Predict();
-      Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
-      vx = newState.get(2,0);
-      vy = newState.get(3,0);
-      double x = newState.get(0,0);
-      double y = newState.get(1,0);
-      Log.d(TAG, "Kalman x = " + x + "; y = " + y);
-      Log.d(TAG, "Kalman vx = " + vx + "; vy = " + vy);
-      //x *= 0.3;
-      //y *= 0.3;
-      // I get almost 0.4 when in rest and about 1-3 when shaking
-      double sigma = 1;
-      double v0 = 2;
-      //ax = ax < 0.3 || ax > 3 ? 0 : ax;
-      //ay = ay < 0.3 || ay > 3 ? 0 : ay;
-      vx *= Math.exp(-(Math.abs(vx)-v0)*(Math.abs(vx)-v0)/2/sigma/sigma);
-      vy *= Math.exp(-(Math.abs(vy)-v0)*(Math.abs(vy)-v0)/2/sigma/sigma);
-      Log.d(TAG, "Yet another x = " + x + "; y = " + y);
-      Log.d(TAG, "Yet another vx = " + vx + "; vy = " + vy);
-      newState.set(2,0,vx);
-      newState.set(3,0,vy);
-      newState.set(0,0,x);
-      newState.set(1,0,y);
-      mKalmanPosition.setState_post(newState);
-      mTransform[0] = (float)(-newState.get(0,0) * mMetersToPixelsX);
-      mTransform[1] = (float)(-newState.get(1,0) * mMetersToPixelsY);
-   }
-
-   private double [] prevRes;
-   private double [] prevMeasure;
+   private double[] prevRes;
+   private double[] prevMeasure;
    private double[] bandpassFilter(double ax, double ay, double dt) {
-      double cutoffLP = 1.0;
-      double cutoffHP = 10.0;
+      double cutoffLP = 3.0;
+      double cutoffHP = 20.0;
       double RCLP = 1. / 2 / Math.PI / cutoffLP;
       double RCHP = 1. / 2 / Math.PI / cutoffHP;
       double alphaLP = dt / (RCLP + dt);
       double alphaHP = RCHP / (RCHP + dt);
       double[] res = new double[2];
+      res[0] = alphaHP * prevRes[0] + alphaHP * (ax - prevMeasure[0]);
+      prevMeasure[0] = ax;
+      res[0] = alphaLP * res[0] + (1 - alphaLP) * prevRes[0];
+      prevRes[0] = res[0];
+      res[1] = alphaHP * prevRes[1] + alphaHP * (ay - prevMeasure[1]);
+      prevMeasure[1] = ay;
+      res[1] = alphaLP * res[1] + (1 - alphaLP) * prevRes[1];
+      prevRes[1] = res[1];
+      /*
       res[0] = ax * alphaLP + (1-alphaLP) * prevRes[0];
       double m = res[0];
       res[0] = prevRes[0] * alphaHP + alphaHP * (res[0] - prevMeasure[0]);
@@ -134,17 +98,55 @@ public class ShakeService extends Service {
       res[1] = prevRes[1] * alphaHP + alphaHP * (res[1] - prevMeasure[1]);
       prevMeasure[1] = m;
       prevRes[1] = res[1];
+      */
       return res;
    }
 
-   private void updatePositionPureFilter(double ax, double ay, double dt) {
-      Log.d(TAG, "Before: " + ax + " " + ay);
+   private double[] prevCRes;
+   private double[] lowpassCoordinate(double x, double y, double dt) {
+      double[] res = new double[2];
+      double cutoff = 1;
+      double RC = 1. / 2 / Math.PI / cutoff;
+      double alpha = dt / (RC + dt);
+      res[0] = alpha * x + (1 - alpha) * prevCRes[0];
+      prevCRes[0] = res[0];
+      res[1] = alpha * y + (1 - alpha) * prevCRes[1];
+      prevCRes[1] = res[1];
+      return res;
+   }
+
+   private void updatePosition(double ax, double ay, double dt) {
+      //Log.d(TAG, "Before: " + ax + " " + ay);
       double[] res = bandpassFilter(ax,ay,dt);
-      Log.d(TAG, "After: " + res[0] + " " + res[1]);
-      double x = res[0] * 2.2;
-      double y = res[1] * 2.2;
-      mTransform[0] = (float)(x * 10);
-      mTransform[1] = (float)(y * 10);
+      double vx = res[0]*dt;
+      double vy = res[1]*dt;
+      double[][] trans = { {1, 0, dt, 0}
+                         , {0, 1, 0,  dt}
+                         , {1, 0, 0,  0}
+                         , {0, 1, 0,  0} };
+      mKalmanPosition.setTransition_matrix(new Matrix(trans));
+      Matrix oldState = mKalmanPosition.Predict();
+      Matrix newState = mKalmanPosition.Correct(new Matrix(new double[] {0, 0, vx, vy}, 4));
+      res = lowpassCoordinate(newState.get(0,0),newState.get(1,0),10*dt);
+      //res[0] = newState.get(0,0);
+      //res[1] = newState.get(1,0);
+      mTransform[0] = (float)(-res[0] * mMetersToPixelsX);
+      mTransform[1] = (float)(-res[1] * mMetersToPixelsY);
+      //double sX = newState.get(0,0) * mMetersToPixelsX;
+      //double sY = newState.get(1,0) * mMetersToPixelsY;
+      //double x = (oldState.get(0,0) + vx * dt) * mMetersToPixelsX;
+      //double y = (oldState.get(1,0) + vy * dt) * mMetersToPixelsY;
+      //Log.d(TAG, "Measured state: " + x + " " + y);
+      //Log.d(TAG, "Stable state: " + sX + " " + sY);
+      //mTransform[0] = (float)(-x - sX);
+      //mTransform[1] = (float)(-y - sY);
+      //mTransform[0] = (float)(-newState.get(0,0) * mMetersToPixelsX);
+      //mTransform[1] = (float)(-newState.get(1,0) * mMetersToPixelsY);
+      //Log.d(TAG, "After: " + res[0] + " " + res[1]);
+      //double x = res[0] * 25;
+      //double y = res[1] * 25;
+      //mTransform[0] = (float)x;
+      //mTransform[1] = (float)y;
    }
 
    private void updateRotation(double vphi, double dt) {
@@ -176,13 +178,13 @@ public class ShakeService extends Service {
       mKalmanPosition.setMeasurement_matrix((new Matrix(measure)).transpose());
       double p = 1e-3;
       double dp = 1e-3;
-      double v = 1e-1;
+      double v = 1e-3;
       double[][] processNoise = { {p, 0, dp, 0}
                                 , {0, p, 0,  dp}
                                 , {0, 0, v,  0}
                                 , {0, 0, 0,  v} };
       mKalmanPosition.setProcess_noise_cov(new Matrix(processNoise));
-      double mp = 1e-1;
+      double mp = 1e-3;
       double mv = 1e-4;
       double[][] measureNoise = { {mp, 0, 0, 0}
                                 , {0, mp, 0, 0}
@@ -251,8 +253,7 @@ public class ShakeService extends Service {
             if(timestampAcceleration != 0)
                dt = (double)(event.timestamp - timestampAcceleration) / 1e9;
             timestampAcceleration = event.timestamp;
-            //updatePosition(event.values[0], event.values[1], dt);
-            updatePositionPureFilter(event.values[0], event.values[1], dt);
+            updatePosition(event.values[0], event.values[1], dt);
          } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             if(timestampGyroscope != 0)
                dt = (double)(event.timestamp - timestampGyroscope) / 1e9;
